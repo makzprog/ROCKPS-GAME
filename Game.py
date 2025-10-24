@@ -11,6 +11,7 @@ class RockPaperScissors:
     def ask_user_choice(self):
         return input("Rock, paper, or scissors? (r/p/s): ")
 
+    # Determine winner
     def determining_winner(self, user_choice, computer_choice):
         print(f"You chose: {user_choice}")
         print(f"Computer chose: {computer_choice}")
@@ -28,6 +29,7 @@ class RockPaperScissors:
             self.computer_score += 1
             self.rounds_played.append("Computer wins!")
 
+    # play the game
     def playgame(self):
         while self.player_score < self.wins_needed and self.computer_score < self.wins_needed:
             user_choice = self.ask_user_choice()
