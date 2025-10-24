@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rock • Paper • Scissors — Simple</title>
+  <style>
+    :root{
+      --yellow:#ffd93d; /* cheerful arcade yellow */
+      --ink:#111827;   /* near-black */
+      --paper:#ffffff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:var(--yellow);}    
+    .wrap{max-width:760px;margin:0 auto;padding:24px 16px;display:flex;flex-direction:column;gap:16px}
+    .title{font-weight:900;font-size:28px;color:var(--ink);text-align:center;}
+    .score{font-weight:800;font-size:20px;color:var(--ink);text-align:center;margin-top:4px}
+    .board{display:flex;align-items:center;justify-content:center;gap:16px;color:var(--ink);font-weight:700}
+    .slot{display:flex;align-items:center;justify-content:center;height:72px;width:120px;border:4px solid var(--ink);border-radius:16px;background:var(--paper)}
+    .status{font-weight:700;text-align:center;color:var(--ink)}
+    .row{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:640px){.row{grid-template-columns:repeat(3,1fr)}}
+    .btn{display:flex;align-items:center;gap:10px;justify-content:center;cursor:pointer;border:4px solid var(--ink);border-radius:18px;background:var(--yellow);padding:14px 18px;font-weight:900;color:var(--ink);box-shadow:0 6px 0 var(--ink);transition:transform .05s ease, box-shadow .05s ease}
+    .btn:active{transform:translateY(2px);box-shadow:0 3px 0 var(--ink)}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    .feed{height:180px;overflow:auto;border:4px solid var(--ink);border-radius:16px;background:#0f172a;color:#e5e7eb;padding:8px}
+    .item{background:#fff;color:#111827;border-radius:12px;padding:8px 10px;margin:6px 0;font-weight:700;box-shadow:0 3px 0 var(--ink)}
+    .footer{display:flex;justify-content:center;gap:10px}
+    .pill{border:4px solid var(--ink);background:#fff;color:var(--ink);border-radius:16px;padding:10px 16px;font-weight:900;box-shadow:0 6px 0 var(--ink)}
+    svg{display:block}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">Rock • Paper • Scissors</div>
+    <div class="score" id="score">Score — Player 0 : 0 Computer</div>
+
+    <div class="board">
+      <div class="slot" id="youSlot">—</div>
+      <div>vs</div>
+      <div class="slot" id="compSlot">—</div>
+    </div>
+
+    <div class="status" id="status">First to 3 wins. Use R / P / S keys too.</div>
+
+    <div class="row">
+      <button class="btn" data-choice="r" id="btnR">{ROCK}</button>
+      <button class="btn" data-choice="p" id="btnP">{PAPER}</button>
+      <button class="btn" data-choice="s" id="btnS">{SCISSORS}</button>
+    </div>
+
+    <div>
+      <div class="status" style="text-align:left;margin-bottom:6px">Rounds</div>
+      <div class="feed" id="feed"><div class="status" style="color:#cbd5e1;text-align:center;margin-top:58px">No rounds yet.</div></div>
+    </div>
+
+    <div class="footer">
+      <button class="pill" id="reset">New Game</button>
+    </div>
+  </div>
+
+  <script>
+    // Inline SVG icons (white hand + dark outline)
+    const svgCommon = 'stroke="#111827" stroke-width="3" fill="#ffffff" stroke-linejoin="round" stroke-linecap="round"';
+    const ROCK = `<svg width="56" height="56" viewBox="0 0 100 100" aria-hidden="true"><g ${svgCommon}><path d="M18 52 L18 70 Q18 82 30 84 L64 88 Q78 89 82 76 L88 56 Q90 46 80 44 L68 42 L64 28 Q63 24 58 24 H48 Q44 24 43 28 L41 36 L36 26 Q34 22 30 24 L26 26 Q22 28 24 34 L28 44 L22 46 Q18 48 18 52 Z"/><path d="M48 41 H70"/><path d="M44 48 H72"/><path d="M40 55 H70"/></g></svg>`;
+    const PAPER = `<svg width="56" height="56" viewBox="0 0 100 100" aria-hidden="true"><g ${svgCommon}><path d="M28 20 H64 Q72 20 72 28 V80 Q72 88 64 88 H36 Q28 88 28 80 Z"/><path d="M36 20 V12 Q36 8 40 8 H44 Q48 8 48 12 V20"/><path d="M48 20 V10 Q48 6 52 6 H56 Q60 6 60 10 V20"/><path d="M60 20 V12 Q60 8 64 8 H68 Q72 8 72 12 V28"/></g></svg>`;
+    const SCISS = `<svg width="56" height="56" viewBox="0 0 100 100" aria-hidden="true"><g ${svgCommon}><circle cx="30" cy="70" r="12" fill="#fefefe"/><circle cx="48" cy="60" r="12" fill="#fefefe"/><path d="M48 60 L86 28"/><path d="M48 60 L86 76"/><path d="M30 70 L48 60"/></g></svg>`;
+
+    // Put labeled content on buttons
+    const btnR = document.getElementById('btnR');
+    const btnP = document.getElementById('btnP');
+    const btnS = document.getElementById('btnS');
+    btnR.innerHTML = ROCK + '<span style="font-size:18px">ROCK</span>';
+    btnP.innerHTML = PAPER + '<span style="font-size:18px">PAPER</span>';
+    btnS.innerHTML = SCISS + '<span style="font-size:18px">SCISSORS</span>';
+
+    // Game state (mirrors Python behaviour)
+    const winsNeeded = 3;
+    let player = 0, computer = 0;
+    const rounds = [];
+
+    const scoreEl = document.getElementById('score');
+    const statusEl = document.getElementById('status');
+    const youSlot = document.getElementById('youSlot');
+    const compSlot = document.getElementById('compSlot');
+    const feed = document.getElementById('feed');
+
+    function randChoice(){ return ['r','p','s'][Math.floor(Math.random()*3)]; }
+    function decide(u,c){
+      if(u===c) return 'tie';
+      if((u==='r'&&c==='s')||(u==='p'&&c==='r')||(u==='s'&&c==='p')) return 'user';
+      return 'comp';
+    }
+
+    const ICON = { r: ROCK, p: PAPER, s: SCISS };
+    const LABEL = { r: 'ROCK', p: 'PAPER', s: 'SCISSORS' };
+
+    function updateScore(){
+      scoreEl.textContent = `Score — Player ${player} : ${computer} Computer`;
+    }
+
+    function logRound(msg){
+      const item = document.createElement('div');
+      item.className = 'item';
+      item.textContent = `Round ${rounds.length}: ${msg}`;
+      if(feed.firstElementChild && feed.firstElementChild.classList.contains('status')) feed.innerHTML='';
+      feed.appendChild(item);
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    function setDisabled(dis){
+      [btnR,btnP,btnS].forEach(b=> b.disabled = dis);
+    }
+
+    function playRound(user){
+      if(player>=winsNeeded || computer>=winsNeeded) return;
+      setDisabled(true);
+      const comp = randChoice();
+      youSlot.innerHTML = ICON[user];
+      compSlot.innerHTML = ICON[comp];
+
+      const outcome = decide(user, comp);
+      let msg;
+      if(outcome==='tie') { msg = "It's a tie!"; }
+      else if(outcome==='user'){ player++; msg = 'Player wins!'; }
+      else { computer++; msg = 'Computer wins!'; }
+
+      rounds.push(msg);
+      updateScore();
+      statusEl.textContent = msg;
+      logRound(msg);
+
+      const over = player>=winsNeeded || computer>=winsNeeded;
+      if(over){
+        statusEl.textContent = player>computer ? 'Player wins the game!' : 'Computer wins the game!';
+        setDisabled(true);
+      } else {
+        setTimeout(()=> setDisabled(false), 150);
+      }
+    }
+
+    function reset(){
+      player=0; computer=0; rounds.length=0;
+      youSlot.textContent='—'; compSlot.textContent='—';
+      feed.innerHTML='<div class="status" style="color:#cbd5e1;text-align:center;margin-top:58px">No rounds yet.</div>';
+      updateScore();
+      statusEl.textContent='First to 3 wins. Use R / P / S keys too.';
+      setDisabled(false);
+    }
+
+    // Wire up
+    document.querySelectorAll('.btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> playRound(btn.getAttribute('data-choice')));
+    });
+    document.getElementById('reset').addEventListener('click', reset);
+    document.addEventListener('keydown', (e)=>{
+      const k = e.key.toLowerCase();
+      if(k==='r'||k==='p'||k==='s') playRound(k);
+    });
+
+    updateScore();
+  </script>
+</body>
+</html>
